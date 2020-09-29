@@ -1,6 +1,10 @@
 package cmd
 
 import (
+	"fmt"
+	"io/ioutil"
+	"log"
+	"plugin"
 	"strings"
 
 	"github.com/spf13/cobra"
@@ -34,5 +38,34 @@ $ kudzu build --gocmd=go1.8rc1`,
 }
 
 func init() {
+
+	files, err := ioutil.ReadDir("./plugins")
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	for _, file := range files {
+		fmt.Println(file.Name())
+		p, err := plugin.Open("./plugins/" + file.Name())
+		if err != nil {
+			fmt.Println("error")
+			log.Fatal(err)
+		}
+		// _, err = p.Lookup("Page")
+		// if err != nil {
+		// 	log.Fatal(err)
+		// }
+		_, err = p.Lookup("MarshalEditor")
+		if err != nil {
+			log.Fatal(err)
+		}
+		_, err = p.Lookup("Hello")
+		if err != nil {
+			fmt.Println("error")
+			log.Fatal(err)
+		}
+
+	}
+
 	rootCmd.AddCommand(buildCmd)
 }
