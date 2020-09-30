@@ -24,13 +24,13 @@ func init() {
 	// We store the compiled regex as the key
 	// and assign the replacement as the map's value.
 	rxList = map[*regexp.Regexp][]byte{
-		regexp.MustCompile("`[-]+`"):                                                                         []byte("-"),
-		regexp.MustCompile("[[:space:]]"):                                                                    []byte("-"),
-		regexp.MustCompile("[[:blank:]]"):                                                                    []byte(""),
-		regexp.MustCompile("`[^a-z0-9]`i"):                                                                   []byte("-"),
-		regexp.MustCompile("[!/:-@[-`{-~]"):                                                                  []byte(""),
-		regexp.MustCompile("/[^\x20-\x7F]/"):                                                                 []byte(""),
-		regexp.MustCompile("`&(amp;)?#?[a-z0-9]+;`i"):                                                        []byte("-"),
+		regexp.MustCompile("`[-]+`"):                  []byte("-"),
+		regexp.MustCompile("[[:space:]]"):             []byte("-"),
+		regexp.MustCompile("[[:blank:]]"):             []byte(""),
+		regexp.MustCompile("`[^a-z0-9]`i"):            []byte("-"),
+		regexp.MustCompile("[!/:-@[-`{-~]"):           []byte(""),
+		regexp.MustCompile("/[^\x20-\x7F]/"):          []byte(""),
+		regexp.MustCompile("`&(amp;)?#?[a-z0-9]+;`i"): []byte("-"),
 		regexp.MustCompile("`&([a-z])(acute|uml|circ|grave|ring|cedil|slash|tilde|caron|lig|quot|rsquo);`i"): []byte("\\1"),
 	}
 }
@@ -125,6 +125,11 @@ type Pushable interface {
 // json tag names of the struct fields to which they correspond.
 type Omittable interface {
 	Omit(http.ResponseWriter, *http.Request) ([]string, error)
+}
+
+// Attachable lets a user define a content type in a plugin.
+type Attachable interface {
+	Attach()
 }
 
 // Item should only be embedded into content type structs.

@@ -45,26 +45,22 @@ func init() {
 	}
 
 	for _, file := range files {
-		fmt.Println(file.Name())
-		p, err := plugin.Open("./plugins/" + file.Name())
-		if err != nil {
-			fmt.Println("error")
-			log.Fatal(err)
+		fname := file.Name()
+		if !strings.HasSuffix(fname, ".so") {
+			continue
 		}
-		// _, err = p.Lookup("Page")
-		// if err != nil {
-		// 	log.Fatal(err)
-		// }
-		_, err = p.Lookup("MarshalEditor")
+		fmt.Println("Loading " + fname)
+		p, err := plugin.Open("./plugins/" + fname)
 		if err != nil {
-			log.Fatal(err)
-		}
-		_, err = p.Lookup("Hello")
-		if err != nil {
-			fmt.Println("error")
 			log.Fatal(err)
 		}
 
+		// Call the Attach method. All content types must implement Attachable.
+		a, err := p.Lookup("Attach")
+		if err != nil {
+			log.Fatal(err)
+		}
+		a.(func())()
 	}
 
 	rootCmd.AddCommand(buildCmd)
