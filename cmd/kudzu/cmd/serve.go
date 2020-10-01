@@ -30,6 +30,8 @@ var serveCmd = &cobra.Command{
 			return ErrWrongOrMissingService
 		}
 
+		buildPlugins()
+
 		db.Init()
 		defer db.Close()
 

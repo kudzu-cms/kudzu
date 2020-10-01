@@ -1,9 +1,12 @@
 package cmd
 
 import (
+	"errors"
 	"fmt"
-	"io/ioutil"
 	"log"
+	"os"
+	"os/exec"
+	"path/filepath"
 	"plugin"
 	"strings"
 
@@ -37,31 +40,35 @@ $ kudzu build --gocmd=go1.8rc1`,
 	},
 }
 
-func init() {
+func buildPlugins() {
+	err := filepath.Walk("./plugins", func(path string, info os.FileInfo, err error) error {
+		if !info.IsDir() && strings.HasSuffix(info.Name(), ".go") {
+			soBuildCmd := exec.Command("go", "build", "-buildmode=plugin", "-o", path+".so", path)
+			fmt.Println(soBuildCmd.String())
+			execErr := soBuildCmd.Run()
+			if execErr != nil {
+				return execErr
+			}
+			p, err := plugin.Open(path + ".so")
+			if err != nil {
+				return errors.New("Failed to open " + path + ".so")
+			}
+			// Call the Attach method. All content types must implement Attachable.
+			a, err := p.Lookup("Attach")
+			if err != nil {
+				return errors.New("Failed to call Attach() on " + path + ".so")
+			}
+			a.(func())()
+		}
+		return nil
+	})
 
-	files, err := ioutil.ReadDir("./plugins")
 	if err != nil {
 		log.Fatal(err)
 	}
 
-	for _, file := range files {
-		fname := file.Name()
-		if !strings.HasSuffix(fname, ".so") {
-			continue
-		}
-		fmt.Println("Loading " + fname)
-		p, err := plugin.Open("./plugins/" + fname)
-		if err != nil {
-			log.Fatal(err)
-		}
+}
 
-		// Call the Attach method. All content types must implement Attachable.
-		a, err := p.Lookup("Attach")
-		if err != nil {
-			log.Fatal(err)
-		}
-		a.(func())()
-	}
-
+func init() {
 	rootCmd.AddCommand(buildCmd)
 }
