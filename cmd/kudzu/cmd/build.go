@@ -43,15 +43,18 @@ func buildPlugins() {
 	err := filepath.Walk("./plugins", func(path string, info os.FileInfo, err error) error {
 		if !info.IsDir() && strings.HasSuffix(info.Name(), ".go") {
 			soBuildCmd := exec.Command("go", "build", "-buildmode=plugin", "-o", path+".so", path)
-			log.Println(info.Name() + ": " + soBuildCmd.String())
+			log.Println("Plugin: " + info.Name())
+			log.Println("\tBuilding: " + soBuildCmd.String())
 			err := soBuildCmd.Run()
 			if err != nil {
 				return err
 			}
+			log.Println("\tLoading: " + path + ".so")
 			p, err := plugin.Open(path + ".so")
 			if err != nil {
 				return err
 			}
+			log.Println("\tAttaching: " + path + ".so")
 			// Call the Attach method. All content types must implement Attachable.
 			a, err := p.Lookup("Attach")
 			if err != nil {
