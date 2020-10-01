@@ -1,8 +1,6 @@
 package cmd
 
 import (
-	"errors"
-	"fmt"
 	"log"
 	"os"
 	"os/exec"
@@ -41,22 +39,23 @@ $ kudzu build --gocmd=go1.8rc1`,
 }
 
 func buildPlugins() {
+	log.Println("[Plugins] Build")
 	err := filepath.Walk("./plugins", func(path string, info os.FileInfo, err error) error {
 		if !info.IsDir() && strings.HasSuffix(info.Name(), ".go") {
 			soBuildCmd := exec.Command("go", "build", "-buildmode=plugin", "-o", path+".so", path)
-			fmt.Println(soBuildCmd.String())
-			execErr := soBuildCmd.Run()
-			if execErr != nil {
-				return execErr
+			log.Println(info.Name() + ": " + soBuildCmd.String())
+			err := soBuildCmd.Run()
+			if err != nil {
+				return err
 			}
 			p, err := plugin.Open(path + ".so")
 			if err != nil {
-				return errors.New("Failed to open " + path + ".so")
+				return err
 			}
 			// Call the Attach method. All content types must implement Attachable.
 			a, err := p.Lookup("Attach")
 			if err != nil {
-				return errors.New("Failed to call Attach() on " + path + ".so")
+				return err
 			}
 			a.(func())()
 		}
@@ -66,6 +65,7 @@ func buildPlugins() {
 	if err != nil {
 		log.Fatal(err)
 	}
+	log.Println("[Plugins] Done")
 
 }
 
