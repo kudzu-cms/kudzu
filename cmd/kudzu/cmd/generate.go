@@ -363,18 +363,18 @@ func generateContentType(args []string) error {
 	name := args[0]
 	fileName := strings.ToLower(name) + ".go"
 
-	// open file in ./content/ dir
+	// open file in ./plugins/ dir
 	// if exists, alert user of conflict
 	pwd, err := os.Getwd()
 	if err != nil {
 		return err
 	}
 
-	contentDir := filepath.Join(pwd, "content")
+	contentDir := filepath.Join(pwd, "plugins")
 	filePath := filepath.Join(contentDir, fileName)
 
 	if _, err := os.Stat(filePath); !os.IsNotExist(err) {
-		localFile := filepath.Join("content", fileName)
+		localFile := filepath.Join("plugins", fileName)
 		return fmt.Errorf("Please remove '%s' before executing this command", localFile)
 	}
 
@@ -422,7 +422,7 @@ var generateCmd = &cobra.Command{
 	Short:   "generate boilerplate code for various kudzu components",
 	Long: `Generate boilerplate code for various kudzu components, such as 'content'.
 
-The command above will generate a file 'content/review.go' with boilerplate
+The command above will generate a file 'plugins/review.go' with boilerplate
 methods, as well as struct definition, and corresponding field tags like:
 
 type Review struct {
