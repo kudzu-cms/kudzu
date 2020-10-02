@@ -3,7 +3,7 @@ package cmd
 import (
 	"strings"
 
-	"github.com/kudzu-cms/kudzu/system"
+	"github.com/kudzu-cms/kudzu/system/system"
 	"github.com/spf13/cobra"
 )
 
