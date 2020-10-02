@@ -3,7 +3,7 @@ package cmd
 import (
 	"strings"
 
-	"github.com/kudzu-cms/kudzu/system/system"
+	"github.com/kudzu-cms/kudzu/cms"
 	"github.com/spf13/cobra"
 )
 
@@ -17,7 +17,7 @@ var serveCmd = &cobra.Command{
 		if bind == "" {
 			bind = "localhost"
 		}
-		system.Run(bind, port, httpsport, services, dev, devhttps, docs, docsport)
+		cms.Run(bind, port, https, httpsport, services, dev, devhttps, docs, docsport)
 		return nil
 	},
 }

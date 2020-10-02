@@ -1,13 +1,15 @@
-// Package system contains a collection of packages that make up the internal
-// kudzu system, which handles addons, administration, the Admin server, the API
-// server, analytics, databases, search, TLS, and various internal types.
-package system
+package cms
 
 import (
 	"errors"
 	"fmt"
 	"log"
 	"net/http"
+	"os"
+	"os/exec"
+	"path/filepath"
+	"plugin"
+	"strings"
 
 	"github.com/kudzu-cms/kudzu/system/admin"
 	"github.com/kudzu-cms/kudzu/system/api"
@@ -22,7 +24,7 @@ var ErrWrongOrMissingService = errors.New("To execute 'kudzu serve', " +
 	"you must specify which service to run.")
 
 // Run starts the project.
-func Run(bind string, port int, porthttps int, services []string, dev bool, devhttps bool, docs bool, docsport int) error {
+func Run(bind string, port int, https bool, httpsport int, services []string, dev bool, devhttps bool, docs bool, docsport int) error {
 
 	buildPlugins()
 
@@ -96,29 +98,36 @@ func Run(bind string, port int, porthttps int, services []string, dev bool, devh
 	return http.ListenAndServe(fmt.Sprintf("%s:%d", bind, port), nil)
 }
 
-// BasicAuth adds HTTP Basic Auth check for requests that should implement it
-func BasicAuth(next http.HandlerFunc) http.HandlerFunc {
-	return http.HandlerFunc(func(res http.ResponseWriter, req *http.Request) {
-		u := db.ConfigCache("backup_basic_auth_user").(string)
-		p := db.ConfigCache("backup_basic_auth_password").(string)
-
-		if u == "" || p == "" {
-			res.WriteHeader(http.StatusForbidden)
-			return
+func buildPlugins() {
+	log.Println("[Plugins] Build")
+	err := filepath.Walk("./plugins", func(path string, info os.FileInfo, err error) error {
+		if !info.IsDir() && strings.HasSuffix(info.Name(), ".go") {
+			soBuildCmd := exec.Command("go", "build", "-buildmode=plugin", "-o", path+".so", path)
+			log.Println("Plugin: " + info.Name())
+			log.Println("\tBuilding: " + soBuildCmd.String())
+			err := soBuildCmd.Run()
+			if err != nil {
+				return err
+			}
+			log.Println("\tLoading: " + path + ".so")
+			p, err := plugin.Open(path + ".so")
+			if err != nil {
+				return err
+			}
+			log.Println("\tAttaching: " + path + ".so")
+			// Call the Attach method. All content types must implement Attachable.
+			a, err := p.Lookup("Attach")
+			if err != nil {
+				return err
+			}
+			a.(func())()
 		}
-
-		user, password, ok := req.BasicAuth()
-
-		if !ok {
-			res.WriteHeader(http.StatusForbidden)
-			return
-		}
-
-		if u != user || p != password {
-			res.WriteHeader(http.StatusUnauthorized)
-			return
-		}
-
-		next.ServeHTTP(res, req)
+		return nil
 	})
+
+	if err != nil {
+		log.Fatal(err)
+	}
+	log.Println("[Plugins] Done")
+
 }
