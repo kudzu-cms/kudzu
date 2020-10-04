@@ -26,7 +26,11 @@ var ErrWrongOrMissingService = errors.New("To execute 'kudzu serve', " +
 // Run starts the project.
 func Run(bind string, port int, https bool, httpsport int, services []string, dev bool, devhttps bool, docs bool, docsport int) error {
 
-	buildPlugins()
+	pluginsPath := filepath.Join(".", "plugins")
+	info, err := os.Stat(pluginsPath)
+	if !os.IsNotExist(err) && info.IsDir() {
+		buildPlugins()
+	}
 
 	db.Init()
 	defer db.Close()
@@ -57,7 +61,7 @@ func Run(bind string, port int, https bool, httpsport int, services []string, de
 	go db.InitSearchIndex()
 
 	// save the https port the system is listening on
-	err := db.PutConfig("https_port", fmt.Sprintf("%d", httpsport))
+	err = db.PutConfig("https_port", fmt.Sprintf("%d", httpsport))
 	if err != nil {
 		log.Fatalln("System failed to save config. Please try to run again.", err)
 	}
@@ -100,7 +104,7 @@ func Run(bind string, port int, https bool, httpsport int, services []string, de
 
 func buildPlugins() {
 	log.Println("[Plugins] Build")
-	err := filepath.Walk("./plugins", func(path string, info os.FileInfo, err error) error {
+	err := filepath.Walk(filepath.Join(".", "plugins"), func(path string, info os.FileInfo, err error) error {
 		if !info.IsDir() && strings.HasSuffix(info.Name(), ".go") {
 			soBuildCmd := exec.Command("go", "build", "-buildmode=plugin", "-o", path+".so", path)
 			log.Println("Plugin: " + info.Name())
