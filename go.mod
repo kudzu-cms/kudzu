@@ -14,13 +14,15 @@ require (
 	github.com/gofrs/uuid v3.3.0+incompatible
 	github.com/gorilla/schema v1.2.0
 	github.com/jmhodges/levigo v1.0.0 // indirect
+	github.com/kr/pretty v0.1.0 // indirect
 	github.com/nilslice/email v0.1.0
 	github.com/nilslice/jwt v1.0.0
 	github.com/remyoudompheng/bigfft v0.0.0-20200410134404-eec4a21b6bb0 // indirect
-	github.com/spf13/cobra v1.0.0
 	github.com/tecbot/gorocksdb v0.0.0-20191217155057-f0fad39f321c // indirect
 	github.com/tidwall/gjson v1.6.1
 	github.com/tidwall/sjson v1.1.1
 	golang.org/x/crypto v0.0.0-20200820211705-5c72a883971a
+	golang.org/x/net v0.0.0-20190522155817-f3200d17e092 // indirect
 	golang.org/x/text v0.3.3
+	gopkg.in/check.v1 v1.0.0-20180628173108-788fd7840127 // indirect
 )
