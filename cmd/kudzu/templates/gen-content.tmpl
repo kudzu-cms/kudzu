@@ -1,10 +1,8 @@
-package content
+package main
 
 import (
 	"fmt"
-	{{ if .HasReferences }}
-	"github.com/bosssauce/reference"
-	{{ end }}
+
 	"github.com/kudzu-cms/kudzu/management/editor"
 	"github.com/kudzu-cms/kudzu/system/item"
 )
@@ -36,7 +34,7 @@ func ({{ .Initial }} *{{ .Name }}) MarshalEditor() ([]byte, error) {
 	return view, nil
 }
 
-func init() {
+func Attach() {
 	item.Types["{{ .Name }}"] = func() interface{} { return new({{ .Name }}) }
 }
 

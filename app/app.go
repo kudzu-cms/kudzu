@@ -5,6 +5,11 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	"os"
+	"os/exec"
+	"path/filepath"
+	"plugin"
+	"strings"
 
 	"github.com/kudzu-cms/kudzu/system/admin"
 	"github.com/kudzu-cms/kudzu/system/api"
@@ -20,6 +25,8 @@ var ErrWrongOrMissingService = errors.New("To execute 'kudzu serve', " +
 
 // Run starts the project.
 func Run(bind string, port int, https bool, httpsport int, services []string, dev bool, devhttps bool, docs bool, docsport int) error {
+
+	buildPlugins()
 
 	db.Init()
 	defer db.Close()
@@ -89,4 +96,38 @@ func Run(bind string, port int, https bool, httpsport int, services []string, de
 	fmt.Printf("Server listening at http://%s:%d for HTTP requests...\n", bind, port)
 	fmt.Printf("\nVisit http://%s:%d/admin to get started.", bind, port)
 	return http.ListenAndServe(fmt.Sprintf("%s:%d", bind, port), nil)
+}
+
+func buildPlugins() {
+	log.Println("[Plugins] Build")
+	err := filepath.Walk("./plugins", func(path string, info os.FileInfo, err error) error {
+		if !info.IsDir() && strings.HasSuffix(info.Name(), ".go") {
+			soBuildCmd := exec.Command("go", "build", "-buildmode=plugin", "-o", path+".so", path)
+			log.Println("Plugin: " + info.Name())
+			log.Println("\tBuilding: " + soBuildCmd.String())
+			err := soBuildCmd.Run()
+			if err != nil {
+				return err
+			}
+			log.Println("\tLoading: " + path + ".so")
+			p, err := plugin.Open(path + ".so")
+			if err != nil {
+				return err
+			}
+			log.Println("\tAttaching: " + path + ".so")
+			// Call the Attach method. All content types must implement Attachable.
+			a, err := p.Lookup("Attach")
+			if err != nil {
+				return err
+			}
+			a.(func())()
+		}
+		return nil
+	})
+
+	if err != nil {
+		log.Fatal(err)
+	}
+	log.Println("[Plugins] Done")
+
 }
