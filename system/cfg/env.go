@@ -37,8 +37,7 @@ func AdminStaticDir() string {
 
 		_, file, _, _ := runtime.Caller(0)
 		basepath := filepath.Dir(file)
-		log.Println("admin-static:" + basepath)
-		staticDir = filepath.Join(getWd(), "system", "admin", "static")
+		staticDir = filepath.Join(basepath, "..", "admin", "static")
 	}
 	return staticDir
 }
