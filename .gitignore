@@ -3,5 +3,3 @@
 /uploads
 /search
 /*.db
-/plugins/*.so
-/plugins/*.go
