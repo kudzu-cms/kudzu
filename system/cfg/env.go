@@ -4,6 +4,7 @@ import (
 	"log"
 	"os"
 	"path/filepath"
+	"runtime"
 )
 
 func getWd() string {
@@ -34,7 +35,9 @@ func AdminStaticDir() string {
 	staticDir := os.Getenv("KUDZU_ADMINSTATIC_DIR")
 	if staticDir == "" {
 
-		staticDir = filepath.Join(getWd(), "system", "admin", "static")
+		_, file, _, _ := runtime.Caller(0)
+		basepath := filepath.Dir(file)
+		staticDir = filepath.Join(basepath, "..", "admin", "static")
 	}
 	return staticDir
 }
