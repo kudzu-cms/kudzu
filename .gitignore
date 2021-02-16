@@ -1,7 +1,7 @@
 /kudzu
 /kudzu-server
-/plugins/*.go
-/plugins/*.so
+/.plugins
+/plugins
 /uploads
 /search
 /*.db
