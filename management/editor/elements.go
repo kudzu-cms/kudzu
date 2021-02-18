@@ -329,96 +329,58 @@ func Checkbox(fieldName string, p interface{}, attrs, options map[string]string)
 	return DOMElementWithChildrenCheckbox(div, opts)
 }
 
+type tag struct {
+	Name  string
+	Value string
+}
+
+type tags struct {
+	GroupName  string
+	GroupLabel string
+	Items      []tag
+}
+
 // Tags returns the []byte of a tag input (in the style of Materialze 'Chips') with a label.
 // IMPORTANT:
 // The `fieldName` argument will cause a panic if it is not exactly the string
 // form of the struct field that this editor input is representing
+// @fixme Tags not currently being reloaded properly.
 func Tags(fieldName string, p interface{}, attrs map[string]string) []byte {
 	name := TagNameFromStructField(fieldName, p)
 
 	// get the saved tags if this is already an existing post
 	values := ValueFromStructField(fieldName, p)
-	var tags []string
+	var tagItems []string
 	if strings.Contains(values, "__kudzu") {
-		tags = strings.Split(values, "__kudzu")
+		tagItems = strings.Split(values, "__kudzu")
 	}
 
 	// case where there is only one tag stored, thus has no separator
 	if len(values) > 0 && !strings.Contains(values, "__kudzu") {
-		tags = append(tags, values)
+		tagItems = append(tagItems, values)
 	}
 
-	html := `
-	<div class="col s12 __kudzu-tags ` + name + `">
-		<label class="active">` + attrs["label"] + ` (Type and press "Enter")</label>
-		<div class="chips ` + name + `"></div>
-	`
-
-	var initial []string
+	var items []tag
 	i := 0
-	for _, tag := range tags {
+	for _, tagValue := range tagItems {
 		tagName := TagNameFromStructFieldMulti(fieldName, i, p)
-		html += `<input type="hidden" class="__kudzu-tag ` + tag + `" name=` + tagName + ` value="` + tag + `"/>`
-		initial = append(initial, `{tag: '`+tag+`'}`)
+		item := tag{Value: tagValue, Name: tagName}
+		items = append(items, item)
 		i++
 	}
+	group := tags{
+		GroupName:  name,
+		GroupLabel: attrs["label"],
+		Items:      items,
+	}
 
-	script := `
-	<script>
-		$(function() {
-			var tags = $('.__kudzu-tags.` + name + `');
-			$('.chips.` + name + `').material_chip({
-				data: [` + strings.Join(initial, ",") + `],
-				secondaryPlaceholder: '+` + name + `'
-			});
+	buf := &bytes.Buffer{}
+	html := theme.LoadTemplateFromFilesystem("elements/tags.tmpl.html")
+	tmpl := template.Must(template.New("tags").Parse(html))
+	err := tmpl.Execute(buf, group)
+	if err != nil {
+		panic(err)
+	}
 
-			// handle events specific to tags
-			var chips = tags.find('.chips');
-
-			chips.on('chip.add', function(e, chip) {
-				chips.parent().find('.empty-tag').remove();
-
-				var input = $('<input>');
-				input.attr({
-					class: '__kudzu-tag '+chip.tag.split(' ').join('__'),
-					name: '` + name + `.'+String(tags.find('input[type=hidden]').length),
-					value: chip.tag,
-					type: 'hidden'
-				});
-
-				tags.append(input);
-			});
-
-			chips.on('chip.delete', function(e, chip) {
-				// convert tag string to class-like selector "some tag" -> ".some.tag"
-				var sel = '.__kudzu-tag.' + chip.tag.split(' ').join('__');
-				chips.parent().find(sel).remove();
-
-				// iterate through all hidden tag inputs to re-name them with the correct ` + name + `.index
-				var hidden = chips.parent().find('input[type=hidden]');
-
-				// if there are no tags, set a blank
-				if (hidden.length === 0) {
-					var input = $('<input>');
-					input.attr({
-						class: 'empty-tag',
-						name: '` + name + `',
-						type: 'hidden'
-					});
-
-					tags.append(input);
-				}
-
-				// re-name hidden storage elements in necessary format
-				for (var i = 0; i < hidden.length; i++) {
-					$(hidden[i]).attr('name', '` + name + `.'+String(i));
-				}
-			});
-		});
-	</script>
-	`
-
-	html += `</div>`
-
-	return []byte(html + script)
+	return buf.Bytes()
 }

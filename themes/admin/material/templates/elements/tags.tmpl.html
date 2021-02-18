@@ -1,0 +1,64 @@
+<div class="col s12 __kudzu-tags {{ .GroupName }}">
+  <label class="active">{{ .GroupLabel }} (Type and press "Enter")</label>
+  <div class="chips {{ .GroupName }}"></div>
+  {{ range .Items }}
+  <input type="hidden" class="__kudzu-tag {{ .Name }}" name="{{ .Name }}" value="{{ .Value }}"/>
+  {{ end }}
+
+	<script>
+		$(function() {
+			var tags = $('.__kudzu-tags.{{ .GroupName }}');
+			$('.chips.{{ .GroupName }}').material_chip({
+				data: [
+        {{ range .Items }}
+        {tag: {{ .Value }}}
+        {{ end }}
+        ],
+				secondaryPlaceholder: '+{{ .GroupName }}'
+			});
+
+			// handle events specific to tags
+			var chips = tags.find('.chips');
+
+			chips.on('chip.add', function(e, chip) {
+				chips.parent().find('.empty-tag').remove();
+
+				var input = $('<input>');
+				input.attr({
+					class: '__kudzu-tag '+chip.tag.split(' ').join('__'),
+					name: '{{ .GroupName }}.'+String(tags.find('input[type=hidden]').length),
+					value: chip.tag,
+					type: 'hidden'
+				});
+
+				tags.append(input);
+			});
+
+			chips.on('chip.delete', function(e, chip) {
+				// convert tag string to class-like selector "some tag" -> ".some.tag"
+				var sel = '.__kudzu-tag.' + chip.tag.split(' ').join('__');
+				chips.parent().find(sel).remove();
+
+				// iterate through all hidden tag inputs to re-name them with the correct {{ .GroupName }}.index
+				var hidden = chips.parent().find('input[type=hidden]');
+
+				// if there are no tags, set a blank
+				if (hidden.length === 0) {
+					var input = $('<input>');
+					input.attr({
+						class: 'empty-tag',
+						name: '{{ .GroupName }}',
+						type: 'hidden'
+					});
+
+					tags.append(input);
+				}
+
+				// re-name hidden storage elements in necessary format
+				for (var i = 0; i < hidden.length; i++) {
+					$(hidden[i]).attr('name', '{{ .GroupName }}.'+String(i));
+				}
+			});
+		});
+	</script>
+</div>
