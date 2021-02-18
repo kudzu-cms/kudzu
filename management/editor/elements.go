@@ -4,6 +4,9 @@ import (
 	"bytes"
 	"html"
 	"strings"
+	"text/template"
+
+	"github.com/kudzu-cms/kudzu/system/theme"
 )
 
 // Input returns the []byte of an <input> HTML element with a label.
@@ -79,6 +82,12 @@ func Timestamp(fieldName string, p interface{}, attrs map[string]string) []byte 
 	return DOMElementSelfClose(e)
 }
 
+type file struct {
+	Name  string
+	Value string
+	Label string
+}
+
 // File returns the []byte of a <input type="file"> HTML element with a label.
 // IMPORTANT:
 // The `fieldName` argument will cause a panic if it is not exactly the string
@@ -86,128 +95,22 @@ func Timestamp(fieldName string, p interface{}, attrs map[string]string) []byte 
 func File(fieldName string, p interface{}, attrs map[string]string) []byte {
 	name := TagNameFromStructField(fieldName, p)
 	value := ValueFromStructField(fieldName, p)
-	tmpl :=
-		`<div class="file-input ` + name + ` input-field col s12">
-			<label class="active">` + attrs["label"] + `</label>
-			<div class="file-field input-field">
-				<div class="btn">
-					<span>Upload</span>
-					<input class="upload" type="file">
-				</div>
-				<div class="file-path-wrapper">
-					<input class="file-path validate" placeholder="` + attrs["label"] + `" type="text">
-				</div>
-			</div>
-			<div class="preview"><div class="img-clip"></div></div>
-			<input class="store ` + name + `" type="hidden" name="` + name + `" value="` + value + `" />
-		</div>`
 
-	script :=
-		`<script>
-			$(function() {
-				var $file = $('.file-input.` + name + `'),
-					upload = $file.find('input.upload'),
-					store = $file.find('input.store'),
-					preview = $file.find('.preview'),
-					clip = preview.find('.img-clip'),
-					reset = document.createElement('div'),
-					img = document.createElement('img'),
-					video = document.createElement('video'),
-					unknown = document.createElement('div'),
-					viewLink = document.createElement('a'),
-					viewLinkText = document.createTextNode('Download / View '),
-					iconLaunch = document.createElement('i'),
-					iconLaunchText = document.createTextNode('launch'),
-					uploadSrc = store.val();
-					video.setAttribute
-					preview.hide();
-					viewLink.setAttribute('href', '` + value + `');
-					viewLink.setAttribute('target', '_blank');
-					viewLink.appendChild(viewLinkText);
-					viewLink.style.display = 'block';
-					viewLink.style.marginRight = '10px';
-					viewLink.style.textAlign = 'right';
-					iconLaunch.className = 'material-icons tiny';
-					iconLaunch.style.position = 'relative';
-					iconLaunch.style.top = '3px';
-					iconLaunch.appendChild(iconLaunchText);
-					viewLink.appendChild(iconLaunch);
-					preview.append(viewLink);
+	values := file{
+		Name:  name,
+		Value: value,
+		Label: attrs["label"],
+	}
 
-				// when ` + name + ` input changes (file is selected), remove
-				// the 'name' and 'value' attrs from the hidden store input.
-				// add the 'name' attr to ` + name + ` input
-				upload.on('change', function(e) {
-					resetImage();
-				});
+	buf := &bytes.Buffer{}
+	html := theme.LoadTemplateFromFilesystem("elements/file.tmpl.html")
+	tmpl := template.Must(template.New("file").Parse(html))
+	err := tmpl.Execute(buf, values)
+	if err != nil {
+		panic(err)
+	}
 
-				if (uploadSrc.length > 0) {
-					var ext = uploadSrc.substring(uploadSrc.lastIndexOf('.'));
-					ext = ext.toLowerCase();
-					switch (ext) {
-						case '.jpg':
-						case '.jpeg':
-						case '.webp':
-						case '.gif':
-						case '.png':
-							$(img).attr('src', store.val());
-							clip.append(img);
-							break;
-						case '.mp4':
-						case '.webm':
-							$(video)
-								.attr('src', store.val())
-								.attr('type', 'video/'+ext.substring(1))
-								.attr('controls', true)
-								.css('width', '100%');
-							clip.append(video);
-							break;
-						default:
-							$(img).attr('src', '/admin/static/dashboard/img/kudzu-file.png');
-							$(unknown)
-								.css({
-									position: 'absolute',
-									top: '10px',
-									left: '10px',
-									border: 'solid 1px #ddd',
-									padding: '7px 7px 5px 12px',
-									fontWeight: 'bold',
-									background: '#888',
-									color: '#fff',
-									textTransform: 'uppercase',
-									letterSpacing: '2px'
-								})
-								.text(ext);
-							clip.append(img);
-							clip.append(unknown);
-							clip.css('maxWidth', '200px');
-					}
-					preview.show();
-
-					$(reset).addClass('reset ` + name + ` btn waves-effect waves-light grey');
-					$(reset).html('<i class="material-icons tiny">clear<i>');
-					$(reset).on('click', function(e) {
-						e.preventDefault();
-						preview.animate({"opacity": 0.1}, 200, function() {
-							preview.slideUp(250, function() {
-								resetImage();
-							});
-						})
-
-					});
-					clip.append(reset);
-				}
-
-				function resetImage() {
-					store.val('');
-					store.attr('name', '');
-					upload.attr('name', '` + name + `');
-					clip.empty();
-				}
-			});
-		</script>`
-
-	return []byte(tmpl + script)
+	return buf.Bytes()
 }
 
 // Richtext returns the []byte of a rich text editor (provided by http://summernote.org/) with a label.

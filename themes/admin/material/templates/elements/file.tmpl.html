@@ -1,0 +1,117 @@
+<div class="file-input {{ .Name }} input-field col s12">
+  <label class="active">{{ .Label }}</label>
+  <div class="file-field input-field">
+    <div class="btn">
+      <span>Upload</span>
+      <input class="upload" type="file">
+    </div>
+    <div class="file-path-wrapper">
+      <input class="file-path validate" placeholder="{{ .Label }}" type="text">
+    </div>
+  </div>
+  <div class="preview"><div class="img-clip"></div></div>
+  <input class="store {{ .Name }}" type="hidden" name="{{ .Name }}" value="{{ .Value }}" />
+</div>
+<script>
+  $(function() {
+    var $file = $('.file-input.{{ .Name }}'),
+      upload = $file.find('input.upload'),
+      store = $file.find('input.store'),
+      preview = $file.find('.preview'),
+      clip = preview.find('.img-clip'),
+      reset = document.createElement('div'),
+      img = document.createElement('img'),
+      video = document.createElement('video'),
+      unknown = document.createElement('div'),
+      viewLink = document.createElement('a'),
+      viewLinkText = document.createTextNode('Download / View '),
+      iconLaunch = document.createElement('i'),
+      iconLaunchText = document.createTextNode('launch'),
+      uploadSrc = store.val();
+      video.setAttribute
+      preview.hide();
+      viewLink.setAttribute('href', '{{ .Value }}');
+      viewLink.setAttribute('target', '_blank');
+      viewLink.appendChild(viewLinkText);
+      viewLink.style.display = 'block';
+      viewLink.style.marginRight = '10px';
+      viewLink.style.textAlign = 'right';
+      iconLaunch.className = 'material-icons tiny';
+      iconLaunch.style.position = 'relative';
+      iconLaunch.style.top = '3px';
+      iconLaunch.appendChild(iconLaunchText);
+      viewLink.appendChild(iconLaunch);
+      preview.append(viewLink);
+
+    // when {{ .Name }} input changes (file is selected), remove
+    // the 'name' and 'value' attrs from the hidden store input.
+    // add the 'name' attr to {{ .Name }} input
+    upload.on('change', function(e) {
+      resetImage();
+    });
+
+    if (uploadSrc.length > 0) {
+      var ext = uploadSrc.substring(uploadSrc.lastIndexOf('.'));
+      ext = ext.toLowerCase();
+      switch (ext) {
+        case '.jpg':
+        case '.jpeg':
+        case '.webp':
+        case '.gif':
+        case '.png':
+          $(img).attr('src', store.val());
+          clip.append(img);
+          break;
+        case '.mp4':
+        case '.webm':
+          $(video)
+            .attr('src', store.val())
+            .attr('type', 'video/'+ext.substring(1))
+            .attr('controls', true)
+            .css('width', '100%');
+          clip.append(video);
+          break;
+        default:
+          $(img).attr('src', '/admin/static/dashboard/img/kudzu-file.png');
+          $(unknown)
+            .css({
+              position: 'absolute',
+              top: '10px',
+              left: '10px',
+              border: 'solid 1px #ddd',
+              padding: '7px 7px 5px 12px',
+              fontWeight: 'bold',
+              background: '#888',
+              color: '#fff',
+              textTransform: 'uppercase',
+              letterSpacing: '2px'
+            })
+            .text(ext);
+          clip.append(img);
+          clip.append(unknown);
+          clip.css('maxWidth', '200px');
+      }
+      preview.show();
+
+      $(reset).addClass('reset {{ .Name }} btn waves-effect waves-light grey');
+      $(reset).html('<i class="material-icons tiny">clear<i>');
+      $(reset).on('click', function(e) {
+        e.preventDefault();
+        preview.animate({"opacity": 0.1}, 200, function() {
+          preview.slideUp(250, function() {
+            resetImage();
+          });
+        })
+
+      });
+      clip.append(reset);
+    }
+
+    function resetImage() {
+      store.val('');
+      store.attr('name', '');
+      upload.attr('name', '{{ .Name }}');
+      clip.empty();
+    }
+  });
+</script>
