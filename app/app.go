@@ -25,7 +25,7 @@ var ErrWrongOrMissingService = errors.New("To execute 'kudzu serve', " +
 // Run starts the project.
 func Run(bind string, port int, https bool, httpsport int, services []string, dev bool, devhttps bool, docs bool, docsport int) error {
 
-	pluginsPath := filepath.Join(".", ".plugins")
+	pluginsPath := filepath.Join(".", "plugins")
 	info, err := os.Stat(pluginsPath)
 	if !os.IsNotExist(err) && info.IsDir() {
 		buildPlugins()
@@ -103,7 +103,7 @@ func Run(bind string, port int, https bool, httpsport int, services []string, de
 
 func buildPlugins() {
 	log.Println("[Plugins] Build")
-	err := filepath.Walk(filepath.Join(".", ".plugins"), func(path string, info os.FileInfo, err error) error {
+	err := filepath.Walk(filepath.Join(".", "plugins"), func(path string, info os.FileInfo, err error) error {
 		if !info.IsDir() && strings.HasSuffix(info.Name(), ".so") {
 			log.Println("\tLoading: " + path)
 			p, err := plugin.Open(path)
