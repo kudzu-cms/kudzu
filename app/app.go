@@ -98,7 +98,7 @@ func Run(bind string, port int, https bool, httpsport int, services []string, de
 
 	fmt.Printf("Server listening at http://%s:%d for HTTP requests...\n", bind, port)
 	fmt.Printf("\nVisit http://%s:%d/admin to get started.\n", bind, port)
-	return http.ListenAndServe(fmt.Sprintf("%s:%d", bind, port), nil)
+	return http.ListenAndServe(fmt.Sprintf(":%d", port), nil)
 }
 
 func buildPlugins() {
