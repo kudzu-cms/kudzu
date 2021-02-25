@@ -98,19 +98,18 @@ func Run(bind string, port int, https bool, httpsport int, services []string, de
 
 	fmt.Printf("Server listening at http://%s:%d for HTTP requests...\n", bind, port)
 	fmt.Printf("\nVisit http://%s:%d/admin to get started.\n", bind, port)
-	return http.ListenAndServe(fmt.Sprintf("%s:%d", bind, port), nil)
+	return http.ListenAndServe(fmt.Sprintf(":%d", port), nil)
 }
 
 func buildPlugins() {
-	log.Println("[Plugins] Build")
 	err := filepath.Walk(filepath.Join(".", ".plugins"), func(path string, info os.FileInfo, err error) error {
 		if !info.IsDir() && strings.HasSuffix(info.Name(), ".so") {
-			log.Println("\tLoading: " + path)
+			fmt.Println("[plugins] load\t" + path)
 			p, err := plugin.Open(path)
 			if err != nil {
 				return err
 			}
-			log.Println("\tAttaching: " + path)
+			fmt.Println("[plugins] attach\t" + path)
 			// Call the Attach method. All content types must implement Attachable.
 			a, err := p.Lookup("Attach")
 			if err != nil {
@@ -124,6 +123,5 @@ func buildPlugins() {
 	if err != nil {
 		log.Fatal(err)
 	}
-	log.Println("[Plugins] Done")
 
 }
