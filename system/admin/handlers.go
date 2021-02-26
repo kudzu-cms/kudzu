@@ -531,10 +531,25 @@ func loginHandler(res http.ResponseWriter, req *http.Request) {
 		return
 	}
 
+	success := map[string]interface{}{
+		"success": true,
+	}
+	successJSON, _ := json.Marshal(success)
+
 	switch req.Method {
+
+	// Handle preflight requests.
+	// @see https://developer.mozilla.org/en-US/docs/Web/HTTP/CORS
+	case http.MethodOptions:
+		res.Header().Set("Access-Control-Allow-Origin", "*")
+		res.Header().Set("Access-Control-Allow-Headers", "Content-Type")
+		res.Header().Set("Access-Control-Allow-Methods", "POST, GET, OPTIONS")
+		res.WriteHeader(http.StatusNoContent)
 	case http.MethodGet:
 		if user.IsValid(req) {
-			http.Redirect(res, req, req.URL.Scheme+req.URL.Host+"/admin", http.StatusFound)
+			res.Header().Set("Access-Control-Allow-Origin", "*")
+			res.Header().Set("Content-Type", "application/json")
+			res.Write(successJSON)
 			return
 		}
 
@@ -550,7 +565,9 @@ func loginHandler(res http.ResponseWriter, req *http.Request) {
 
 	case http.MethodPost:
 		if user.IsValid(req) {
-			http.Redirect(res, req, req.URL.Scheme+req.URL.Host+"/admin", http.StatusFound)
+			res.Header().Set("Access-Control-Allow-Origin", "*")
+			res.Header().Set("Content-Type", "application/json")
+			res.Write(successJSON)
 			return
 		}
 
@@ -607,7 +624,9 @@ func loginHandler(res http.ResponseWriter, req *http.Request) {
 			Path:    "/",
 		})
 
-		http.Redirect(res, req, strings.TrimSuffix(req.URL.String(), "/login"), http.StatusFound)
+		res.Header().Set("Access-Control-Allow-Origin", "*")
+		res.Header().Set("Content-Type", "application/json")
+		res.Write(successJSON)
 	}
 }
 
