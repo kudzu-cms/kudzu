@@ -1220,11 +1220,10 @@ func decoupledContentsHandler(res http.ResponseWriter, req *http.Request) {
 					continue
 				}
 
-				post := adminPostListItem(p, t, status)
-				item := map[string]interface{}{
-					"title": string(post),
+				post := adminPostListItemJSON(p, t, status)
+				if post != nil {
+					items = append(items, post)
 				}
-				items = append(items, item)
 
 			}
 
@@ -1239,11 +1238,10 @@ func decoupledContentsHandler(res http.ResponseWriter, req *http.Request) {
 					continue
 				}
 
-				post := adminPostListItem(p, t, status)
-				item := map[string]interface{}{
-					"title": string(post),
+				post := adminPostListItemJSON(p, t, status)
+				if post != nil {
+					items = append(items, post)
 				}
-				items = append(items, item)
 			}
 		}
 
@@ -1257,11 +1255,10 @@ func decoupledContentsHandler(res http.ResponseWriter, req *http.Request) {
 				continue
 			}
 
-			post := adminPostListItem(p, t, status)
-			item := map[string]interface{}{
-				"title": string(post),
+			post := adminPostListItemJSON(p, t, status)
+			if post != nil {
+				items = append(items, post)
 			}
-			items = append(items, item)
 		}
 	}
 
@@ -1731,6 +1728,59 @@ func contentsHandler(res http.ResponseWriter, req *http.Request) {
 
 	res.Header().Set("Content-Type", "text/html")
 	res.Write(adminView)
+}
+
+func adminPostListItemJSON(e editor.Editable, typeName, status string) map[string]interface{} {
+	s, ok := e.(item.Sortable)
+	if !ok {
+		log.Println("Content type", typeName, "doesn't implement item.Sortable")
+		return nil
+	}
+
+	i, ok := e.(item.Identifiable)
+	if !ok {
+		log.Println("Content type", typeName, "doesn't implement item.Identifiable")
+		return nil
+	}
+
+	// use sort to get other info to display in admin UI post list
+	tsTime := time.Unix(int64(s.Time()/1000), 0)
+	upTime := time.Unix(int64(s.Touch()/1000), 0)
+
+	cid := fmt.Sprintf("%d", i.ItemID())
+
+	switch status {
+	case "public", "":
+		status = ""
+	default:
+		status = "__" + status
+	}
+	link := `/admin/edit?type=` + typeName + `&status=` + strings.TrimPrefix(status, "__") + `&id=` + cid
+	if strings.HasPrefix(typeName, "__") {
+		link = `/admin/edit/upload?id=` + cid
+	}
+
+	editLink := map[string]interface{}{
+		"url": link,
+	}
+	deleteLink := map[string]interface{}{
+		"url": "@TODO",
+	}
+	links := map[string]interface{}{
+		"edit":   editLink,
+		"delete": deleteLink,
+	}
+	post := map[string]interface{}{
+		"uuid":      i.UniqueID(),
+		"type":      typeName,
+		"status":    status,
+		"label":     i.String(),
+		"id":        i.ItemID(),
+		"published": tsTime,
+		"updated":   upTime,
+		"links":     links,
+	}
+	return post
 }
 
 // adminPostListItem is a helper to create the li containing a post.
