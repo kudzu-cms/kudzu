@@ -1124,6 +1124,18 @@ func uploadContentsHandler(res http.ResponseWriter, req *http.Request) {
 
 func decoupledContentsHandler(res http.ResponseWriter, req *http.Request) {
 
+	if req.Method == http.MethodOptions {
+		res.Header().Set("Access-Control-Allow-Headers", "Content-Type")
+		res.Header().Set("Access-Control-Allow-Methods", "POST, GET, OPTIONS")
+		res.WriteHeader(http.StatusNoContent)
+		return
+	}
+
+	if req.Method != http.MethodGet {
+		res.WriteHeader(http.StatusMethodNotAllowed)
+		return
+	}
+
 	// Return type information if no query parameters are provided.
 	//
 	// @todo This needs to be implemented recursively to better handle nested
@@ -1173,11 +1185,12 @@ func decoupledContentsHandler(res http.ResponseWriter, req *http.Request) {
 		}
 		jsonResponse, err := json.Marshal(types)
 		if err != nil {
-			log.Println("Failed to encode JSON data for types")
 			res.WriteHeader(http.StatusInternalServerError)
 			return
 		}
+		res.Header().Set("Access-Control-Allow-Origin", os.Getenv("KUDZU_CORS_ORIGIN"))
 		res.Header().Set("Content-Type", "application/json")
+		res.Header().Set("Access-Control-Allow-Credentials", "true")
 		res.Write(jsonResponse)
 		return
 	}
@@ -1342,7 +1355,9 @@ func decoupledContentsHandler(res http.ResponseWriter, req *http.Request) {
 		res.WriteHeader(http.StatusInternalServerError)
 		return
 	}
+	res.Header().Set("Access-Control-Allow-Origin", os.Getenv("KUDZU_CORS_ORIGIN"))
 	res.Header().Set("Content-Type", "application/json")
+	res.Header().Set("Access-Control-Allow-Credentials", "true")
 	res.Write(jsonResponse)
 }
 
