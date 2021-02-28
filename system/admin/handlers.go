@@ -9,6 +9,7 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"reflect"
 	"strconv"
 	"strings"
 	"time"
@@ -1122,6 +1123,65 @@ func uploadContentsHandler(res http.ResponseWriter, req *http.Request) {
 }
 
 func decoupledContentsHandler(res http.ResponseWriter, req *http.Request) {
+
+	// Return type information if no query parameters are provided.
+	//
+	// @todo This needs to be implemented recursively to better handle nested
+	// types.
+	//
+	// @todo It also needs to be determined whether or not nested types should
+	// be flattened in the returned JSON. Probably, the answer is yes, but it
+	// still needs to be considered whether or not this could result in field name
+	// collisions. The item.Item type could be treated as special case that is
+	// flattened, while others will not be.
+	//
+	// @todo This endpoint should return field types in their presentation format.
+	// Field types shouldn't  be returned as their true internal data type.
+	// For instance, `int64` could be returned simply as `int` and `uuid.UUID`
+	// could be returned as `string` because external systems are welcome to think
+	// of this type as being represented by a string.
+	if req.URL.RawQuery == "" {
+		types := map[string]interface{}{}
+		for name, t := range item.Types {
+			tInst := t()
+			ref := reflect.ValueOf(tInst).Elem()
+			typeSchema := map[string]interface{}{}
+			for i := 0; i < ref.NumField(); i++ {
+				field := ref.Type().Field(i)
+				fieldName := field.Name
+				fieldType := field.Type.String()
+				if fieldType != "item.Item" {
+					typeSchema[fieldName] = fieldType
+				} else {
+					itemInst := item.Item{}
+					itemRef := reflect.ValueOf(&itemInst).Elem()
+					// To return is nested representation:
+					// itemSchema := map[string]interface{}{}
+					for j := 0; j < itemRef.NumField(); j++ {
+						field := itemRef.Type().Field(j)
+						fieldName := field.Name
+						fieldType := field.Type.String()
+						// To return is nested representation:
+						// itemSchema[fieldName] = fieldType
+						typeSchema[fieldName] = fieldType
+					}
+					// To return is nested representation:
+					// typeSchema[fieldName] = itemSchema
+				}
+			}
+			types[name] = typeSchema
+		}
+		jsonResponse, err := json.Marshal(types)
+		if err != nil {
+			log.Println("Failed to encode JSON data for types")
+			res.WriteHeader(http.StatusInternalServerError)
+			return
+		}
+		res.Header().Set("Content-Type", "application/json")
+		res.Write(jsonResponse)
+		return
+	}
+
 	q := req.URL.Query()
 	t := q.Get("type")
 	if t == "" {
