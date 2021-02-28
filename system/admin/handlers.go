@@ -1121,6 +1121,187 @@ func uploadContentsHandler(res http.ResponseWriter, req *http.Request) {
 	res.Write(adminView)
 }
 
+func decoupledContentsHandler(res http.ResponseWriter, req *http.Request) {
+	q := req.URL.Query()
+	t := q.Get("type")
+	if t == "" {
+		res.WriteHeader(http.StatusBadRequest)
+		return
+	}
+
+	order := strings.ToLower(q.Get("order"))
+	if order != "asc" {
+		order = "desc"
+	}
+
+	status := q.Get("status")
+
+	if _, ok := item.Types[t]; !ok {
+		res.WriteHeader(http.StatusBadRequest)
+		return
+	}
+
+	pt := item.Types[t]()
+
+	p, ok := pt.(editor.Editable)
+	if !ok {
+		res.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+
+	var hasExt bool
+	_, ok = pt.(api.Createable)
+	if ok {
+		hasExt = true
+	}
+
+	count, err := strconv.Atoi(q.Get("count")) // int: determines number of posts to return (10 default, -1 is all)
+	if err != nil {
+		if q.Get("count") == "" {
+			count = 10
+		} else {
+			res.WriteHeader(http.StatusInternalServerError)
+			return
+		}
+	}
+
+	offset, err := strconv.Atoi(q.Get("offset")) // int: multiplier of count for pagination (0 default)
+	if err != nil {
+		if q.Get("offset") == "" {
+			offset = 0
+		} else {
+			res.WriteHeader(http.StatusInternalServerError)
+			return
+		}
+	}
+
+	opts := db.QueryOptions{
+		Count:  count,
+		Offset: offset,
+		Order:  order,
+	}
+
+	var specifier string
+	if status == "public" || status == "" {
+		specifier = "__sorted"
+	} else if status == "pending" {
+		specifier = "__pending"
+	}
+
+	var items []map[string]interface{}
+
+	var total int
+	var posts [][]byte
+
+	if hasExt {
+		if status == "" {
+			q.Set("status", "public")
+		}
+
+		// always start from top of results when changing public/pending
+		q.Del("count")
+		q.Del("offset")
+
+		q.Set("status", "public")
+		// publicURL := req.URL.Path + "?" + q.Encode()
+
+		q.Set("status", "pending")
+		// pendingURL := req.URL.Path + "?" + q.Encode()
+
+		switch status {
+		case "public", "":
+			// get __sorted posts of type t from the db
+			total, posts = db.Query(t+specifier, opts)
+
+			for i := range posts {
+				err := json.Unmarshal(posts[i], &p)
+				if err != nil {
+					log.Println("Error unmarshal json into", t, err, string(posts[i]))
+					continue
+				}
+
+				post := adminPostListItem(p, t, status)
+				item := map[string]interface{}{
+					"title": string(post),
+				}
+				items = append(items, item)
+
+			}
+
+		case "pending":
+			// get __pending posts of type t from the db
+			total, posts = db.Query(t+"__pending", opts)
+
+			for i := len(posts) - 1; i >= 0; i-- {
+				err := json.Unmarshal(posts[i], &p)
+				if err != nil {
+					log.Println("Error unmarshal json into", t, err, string(posts[i]))
+					continue
+				}
+
+				post := adminPostListItem(p, t, status)
+				item := map[string]interface{}{
+					"title": string(post),
+				}
+				items = append(items, item)
+			}
+		}
+
+	} else {
+		total, posts = db.Query(t+specifier, opts)
+
+		for i := range posts {
+			err := json.Unmarshal(posts[i], &p)
+			if err != nil {
+				log.Println("Error unmarshal json into", t, err, string(posts[i]))
+				continue
+			}
+
+			post := adminPostListItem(p, t, status)
+			item := map[string]interface{}{
+				"title": string(post),
+			}
+			items = append(items, item)
+		}
+	}
+
+	// statusDisabled := "disabled"
+	//prevStatus := ""
+	//nextStatus := ""
+	// total may be less than 10 (default count), so reset count to match total
+	if total < count {
+		count = total
+	}
+	// nothing previous to current list
+	// if offset == 0 {
+	// 	prevStatus = statusDisabled
+	// }
+	// nothing after current list
+	// if (offset+1)*count >= total {
+	// 	nextStatus = statusDisabled
+	// }
+
+	// set up pagination values
+	// urlFmt := req.URL.Path + "?count=%d&offset=%d&&order=%s&status=%s&type=%s"
+	// prevURL := fmt.Sprintf(urlFmt, count, offset-1, order, status, t)
+	// nextURL := fmt.Sprintf(urlFmt, count, offset+1, order, status, t)
+	// start := 1 + count*offset
+	// end := start + count - 1
+
+	response := map[string]interface{}{
+		"type":   t,
+		"status": status,
+	}
+	response["items"] = items
+	jsonResponse, err := json.Marshal(response)
+	if err != nil {
+		res.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+	res.Header().Set("Content-Type", "application/json")
+	res.Write(jsonResponse)
+}
+
 func contentsHandler(res http.ResponseWriter, req *http.Request) {
 	q := req.URL.Query()
 	t := q.Get("type")
