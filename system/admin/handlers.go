@@ -1167,17 +1167,17 @@ func decoupledContentsHandler(res http.ResponseWriter, req *http.Request) {
 				} else {
 					itemInst := item.Item{}
 					itemRef := reflect.ValueOf(&itemInst).Elem()
-					// To return is nested representation:
+					// To return in nested representation:
 					// itemSchema := map[string]interface{}{}
 					for j := 0; j < itemRef.NumField(); j++ {
 						field := itemRef.Type().Field(j)
 						fieldName := field.Name
 						fieldType := field.Type.String()
-						// To return is nested representation:
+						// To return in nested representation:
 						// itemSchema[fieldName] = fieldType
 						typeSchema[fieldName] = fieldType
 					}
-					// To return is nested representation:
+					// To return in nested representation:
 					// typeSchema[fieldName] = itemSchema
 				}
 			}
