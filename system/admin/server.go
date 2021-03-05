@@ -39,7 +39,6 @@ func Run() {
 	http.HandleFunc("/admin/uploads/search", user.Auth(uploadSearchHandler))
 
 	http.HandleFunc("/admin/contents", user.Auth(contentsHandler))
-	http.HandleFunc("/admin/contents/meta", user.Auth(contentsMetaHandler))
 	http.HandleFunc("/admin/contents/search", user.Auth(searchHandler))
 	http.HandleFunc("/admin/contents/export", user.Auth(exportHandler))
 

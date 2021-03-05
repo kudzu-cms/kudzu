@@ -9,6 +9,8 @@ import "net/http"
 func Run() {
 	http.HandleFunc("/api/contents", Record(CORS(Gzip(contentsHandler))))
 
+	http.HandleFunc("/api/contents/meta", Record(CORS(AuthCORS(Gzip(contentsMetaHandler)))))
+
 	http.HandleFunc("/api/content", Record(CORS(Gzip(contentHandler))))
 
 	http.HandleFunc("/api/content/create", Record(CORS(AuthCORS(createContentHandler))))
