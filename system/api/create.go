@@ -14,23 +14,8 @@ import (
 	"github.com/kudzu-cms/kudzu/system/db"
 	"github.com/kudzu-cms/kudzu/system/item"
 
-	"github.com/kudzu-cms/kudzu/system/admin/user"
-
 	"github.com/gorilla/schema"
 )
-
-// Createable accepts or rejects external POST requests to endpoints such as:
-// /api/content/create?type=Review
-type Createable interface {
-	// Create enables external clients to submit content of a specific type
-	Create(http.ResponseWriter, *http.Request) error
-}
-
-// Trustable allows external content to be auto-approved, meaning content sent
-// as an Createable will be stored in the public content bucket
-type Trustable interface {
-	AutoApprove(http.ResponseWriter, *http.Request) error
-}
 
 func contentsMetaHandler(res http.ResponseWriter, req *http.Request) {
 
@@ -103,8 +88,6 @@ func createContentHandler(res http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	userIsAuthorized := user.IsValid(req)
-
 	err := req.ParseMultipartForm(1024 * 1024 * 4) // maxMemory 4MB
 	if err != nil {
 		log.Println("[Create] error:", err)
@@ -126,15 +109,6 @@ func createContentHandler(res http.ResponseWriter, req *http.Request) {
 	}
 
 	post := p()
-
-	// The content is creatable if this is an authenticated request or the content
-	// implements api.Creatable.
-	ext, isCreateable := post.(Createable)
-	if !userIsAuthorized && !isCreateable {
-		log.Println("[Create] rejected non-createable type:", t, "from:", req.RemoteAddr)
-		res.WriteHeader(http.StatusBadRequest)
-		return
-	}
 
 	ts := fmt.Sprintf("%d", int64(time.Nanosecond)*time.Now().UnixNano()/int64(time.Millisecond))
 	req.PostForm.Set("timestamp", ts)
@@ -223,40 +197,13 @@ func createContentHandler(res http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	if isCreateable {
-		err = ext.Create(res, req)
-		if err != nil {
-			log.Println("[Create] error calling Create:", err)
-			return
-		}
-	}
-
 	err = hook.BeforeSave(res, req)
 	if err != nil {
 		log.Println("[Create] error calling BeforeSave:", err)
 		return
 	}
 
-	// set specifier for db bucket in case content is/isn't Trustable
-	var spec string
-
-	// check if the content is Trustable should be auto-approved, if so the
-	// content is immediately added to the public content API. If not, then it
-	// is added to a "pending" list, only visible to Admins in the CMS and only
-	// if the type implements editor.Mergable
-	trusted, ok := post.(Trustable)
-	if ok {
-		err := trusted.AutoApprove(res, req)
-		if err != nil {
-			log.Println("[Create] error calling AutoApprove:", err)
-			return
-		}
-		// The content is trusted if this is an authenticated user.
-	} else if !userIsAuthorized {
-		spec = "__pending"
-	}
-
-	id, err := db.SetContent(t+spec+":-1", req.PostForm)
+	id, err := db.SetContent(t+":-1", req.PostForm)
 	if err != nil {
 		log.Println("[Create] error calling SetContent:", err)
 		res.WriteHeader(http.StatusInternalServerError)
@@ -280,20 +227,10 @@ func createContentHandler(res http.ResponseWriter, req *http.Request) {
 	}
 
 	// create JSON response to send data back to client
-	var data map[string]interface{}
-	if spec != "" {
-		spec = strings.TrimPrefix(spec, "__")
-		data = map[string]interface{}{
-			"status": spec,
-			"type":   t,
-		}
-	} else {
-		spec = "public"
-		data = map[string]interface{}{
-			"id":     id,
-			"status": spec,
-			"type":   t,
-		}
+	data := map[string]interface{}{
+		"id":     id,
+		"status": "public",
+		"type":   t,
 	}
 
 	resp := map[string]interface{}{

@@ -20,7 +20,6 @@ import (
 	"github.com/kudzu-cms/kudzu/system/admin/config"
 	"github.com/kudzu-cms/kudzu/system/admin/upload"
 	"github.com/kudzu-cms/kudzu/system/admin/user"
-	"github.com/kudzu-cms/kudzu/system/api"
 	"github.com/kudzu-cms/kudzu/system/api/analytics"
 	"github.com/kudzu-cms/kudzu/system/db"
 	"github.com/kudzu-cms/kudzu/system/item"
@@ -1168,10 +1167,6 @@ func contentsHandler(res http.ResponseWriter, req *http.Request) {
 	}
 
 	var hasExt bool
-	_, ok = pt.(api.Createable)
-	if ok {
-		hasExt = true
-	}
 
 	count, err := strconv.Atoi(q.Get("count")) // int: determines number of posts to return (10 default, -1 is all)
 	if err != nil {
