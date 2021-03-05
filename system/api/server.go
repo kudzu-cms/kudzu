@@ -11,7 +11,7 @@ func Run() {
 
 	http.HandleFunc("/api/content", Record(CORS(Gzip(contentHandler))))
 
-	http.HandleFunc("/api/content/create", Record(CORS(createContentHandler)))
+	http.HandleFunc("/api/content/create", Record(CORS(AuthCORS(createContentHandler))))
 
 	http.HandleFunc("/api/content/update", Record(CORS(updateContentHandler)))
 

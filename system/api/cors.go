@@ -4,7 +4,9 @@ import (
 	"log"
 	"net/http"
 	"net/url"
+	"os"
 
+	"github.com/kudzu-cms/kudzu/system/admin/user"
 	"github.com/kudzu-cms/kudzu/system/db"
 )
 
@@ -54,6 +56,19 @@ func responseWithCORS(res http.ResponseWriter, req *http.Request) (http.Response
 	res.Header().Set("Access-Control-Allow-Origin", "*")
 
 	return res, true
+}
+
+// AuthCORS ...
+func AuthCORS(next http.HandlerFunc) http.HandlerFunc {
+	return http.HandlerFunc(func(res http.ResponseWriter, req *http.Request) {
+		if !user.IsValid(req) {
+			res.WriteHeader(http.StatusForbidden)
+			return
+		}
+		res.Header().Set("Access-Control-Allow-Origin", os.Getenv("KUDZU_CORS_ORIGIN"))
+		res.Header().Set("Access-Control-Allow-Credentials", "true")
+		next.ServeHTTP(res, req)
+	})
 }
 
 // CORS wraps a HandlerFunc to respond to OPTIONS requests properly

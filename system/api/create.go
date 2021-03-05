@@ -13,6 +13,8 @@ import (
 	"github.com/kudzu-cms/kudzu/system/db"
 	"github.com/kudzu-cms/kudzu/system/item"
 
+	"github.com/kudzu-cms/kudzu/system/admin/user"
+
 	"github.com/gorilla/schema"
 )
 
@@ -34,6 +36,8 @@ func createContentHandler(res http.ResponseWriter, req *http.Request) {
 		res.WriteHeader(http.StatusMethodNotAllowed)
 		return
 	}
+
+	userIsAuthorized := user.IsValid(req)
 
 	err := req.ParseMultipartForm(1024 * 1024 * 4) // maxMemory 4MB
 	if err != nil {
@@ -57,8 +61,10 @@ func createContentHandler(res http.ResponseWriter, req *http.Request) {
 
 	post := p()
 
-	ext, ok := post.(Createable)
-	if !ok {
+	// The content is creatable if this is an authenticated request or the content
+	// implements api.Creatable.
+	ext, isCreateable := post.(Createable)
+	if !userIsAuthorized && !isCreateable {
 		log.Println("[Create] rejected non-createable type:", t, "from:", req.RemoteAddr)
 		res.WriteHeader(http.StatusBadRequest)
 		return
@@ -151,10 +157,12 @@ func createContentHandler(res http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	err = ext.Create(res, req)
-	if err != nil {
-		log.Println("[Create] error calling Accept:", err)
-		return
+	if isCreateable {
+		err = ext.Create(res, req)
+		if err != nil {
+			log.Println("[Create] error calling Create:", err)
+			return
+		}
 	}
 
 	err = hook.BeforeSave(res, req)
@@ -177,7 +185,8 @@ func createContentHandler(res http.ResponseWriter, req *http.Request) {
 			log.Println("[Create] error calling AutoApprove:", err)
 			return
 		}
-	} else {
+		// The content is trusted if this is an authenticated user.
+	} else if !userIsAuthorized {
 		spec = "__pending"
 	}
 
