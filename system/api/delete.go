@@ -9,13 +9,6 @@ import (
 	"github.com/kudzu-cms/kudzu/system/item"
 )
 
-// Deleteable accepts or rejects update POST requests to endpoints such as:
-// /api/content/delete?type=Review&id=1
-type Deleteable interface {
-	// Delete enables external clients to delete content of a specific type
-	Delete(http.ResponseWriter, *http.Request) error
-}
-
 func deleteContentHandler(res http.ResponseWriter, req *http.Request) {
 	if req.Method != http.MethodPost {
 		res.WriteHeader(http.StatusMethodNotAllowed)
@@ -51,13 +44,6 @@ func deleteContentHandler(res http.ResponseWriter, req *http.Request) {
 
 	post := p()
 
-	ext, ok := post.(Deleteable)
-	if !ok {
-		log.Println("[Delete] rejected non-deleteable type:", t, "from:", req.RemoteAddr)
-		res.WriteHeader(http.StatusBadRequest)
-		return
-	}
-
 	hook, ok := post.(item.Hookable)
 	if !ok {
 		log.Println("[Delete] error: Type", t, "does not implement item.Hookable or embed item.Item.")
@@ -82,16 +68,6 @@ func deleteContentHandler(res http.ResponseWriter, req *http.Request) {
 		log.Println("[Delete] error calling BeforeAPIDelete:", err)
 		if err == ErrNoAuth {
 			// BeforeAPIDelete can check user.IsValid(req) for auth
-			res.WriteHeader(http.StatusUnauthorized)
-		}
-		return
-	}
-
-	err = ext.Delete(res, req)
-	if err != nil {
-		log.Println("[Delete] error calling Delete:", err)
-		if err == ErrNoAuth {
-			// Delete can check user.IsValid(req) or other forms of validation for auth
 			res.WriteHeader(http.StatusUnauthorized)
 		}
 		return
