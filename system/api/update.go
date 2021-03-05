@@ -16,13 +16,6 @@ import (
 	"github.com/gorilla/schema"
 )
 
-// Updateable accepts or rejects update POST requests to endpoints such as:
-// /api/content/update?type=Review&id=1
-type Updateable interface {
-	// Update enabled external clients to update content of a specific type
-	Update(http.ResponseWriter, *http.Request) error
-}
-
 func updateContentHandler(res http.ResponseWriter, req *http.Request) {
 	if req.Method != http.MethodPost {
 		res.WriteHeader(http.StatusMethodNotAllowed)
@@ -69,13 +62,6 @@ func updateContentHandler(res http.ResponseWriter, req *http.Request) {
 	if err != nil {
 		log.Println("[Update] error populating data in type:", t, err)
 		res.WriteHeader(http.StatusInternalServerError)
-		return
-	}
-
-	ext, ok := post.(Updateable)
-	if !ok {
-		log.Println("[Update] rejected non-updateable type:", t, "from:", req.RemoteAddr)
-		res.WriteHeader(http.StatusBadRequest)
 		return
 	}
 
@@ -170,26 +156,13 @@ func updateContentHandler(res http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	err = ext.Update(res, req)
-	if err != nil {
-		log.Println("[Update] error calling Update:", err)
-		if err == ErrNoAuth {
-			// Update can check user.IsValid(req) or other forms of validation for auth
-			res.WriteHeader(http.StatusUnauthorized)
-		}
-		return
-	}
-
 	err = hook.BeforeSave(res, req)
 	if err != nil {
 		log.Println("[Update] error calling BeforeSave:", err)
 		return
 	}
 
-	// set specifier for db bucket in case content is/isn't Trustable
-	var spec string
-
-	_, err = db.UpdateContent(t+spec+":"+id, req.PostForm)
+	_, err = db.UpdateContent(t+":"+id, req.PostForm)
 	if err != nil {
 		log.Println("[Update] error calling UpdateContent:", err)
 		res.WriteHeader(http.StatusInternalServerError)
@@ -213,20 +186,10 @@ func updateContentHandler(res http.ResponseWriter, req *http.Request) {
 	}
 
 	// create JSON response to send data back to client
-	var data map[string]interface{}
-	if spec != "" {
-		spec = strings.TrimPrefix(spec, "__")
-		data = map[string]interface{}{
-			"status": spec,
-			"type":   t,
-		}
-	} else {
-		spec = "public"
-		data = map[string]interface{}{
-			"id":     id,
-			"status": spec,
-			"type":   t,
-		}
+	data := map[string]interface{}{
+		"id":     id,
+		"status": "public",
+		"type":   t,
 	}
 
 	resp := map[string]interface{}{
