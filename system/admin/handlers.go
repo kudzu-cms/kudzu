@@ -8,7 +8,6 @@ import (
 	"fmt"
 	"log"
 	"net/http"
-	"os"
 	"strconv"
 	"strings"
 	"time"
@@ -526,53 +525,38 @@ func configUsersDeleteHandler(res http.ResponseWriter, req *http.Request) {
 
 func loginHandler(res http.ResponseWriter, req *http.Request) {
 	if !db.SystemInitComplete() {
-		// @todo Handle this more gracefully.
-		res.WriteHeader(http.StatusBadRequest)
+		redir := req.URL.Scheme + req.URL.Host + "/admin/init"
+		http.Redirect(res, req, redir, http.StatusFound)
 		return
 	}
 
-	res.Header().Set("Access-Control-Allow-Origin", os.Getenv("KUDZU_CORS_ORIGIN"))
-	res.Header().Set("Content-Type", "application/json")
-	res.Header().Set("Access-Control-Allow-Credentials", "true")
-	success := map[string]interface{}{
-		"success": true,
-	}
-	successJSON, _ := json.Marshal(success)
-
-	failure := map[string]interface{}{
-		"success": false,
-	}
-	failureJSON, _ := json.Marshal(failure)
-
 	switch req.Method {
-
-	// Handle preflight requests.
-	// @see https://developer.mozilla.org/en-US/docs/Web/HTTP/CORS
-	case http.MethodOptions:
-		res.Header().Set("Access-Control-Allow-Headers", "Content-Type")
-		res.Header().Set("Access-Control-Allow-Methods", "POST, GET, OPTIONS")
-		res.WriteHeader(http.StatusNoContent)
 	case http.MethodGet:
 		if user.IsValid(req) {
-			res.Write(successJSON)
+			http.Redirect(res, req, req.URL.Scheme+req.URL.Host+"/admin", http.StatusFound)
 			return
 		}
 
-		res.WriteHeader(http.StatusUnauthorized)
-		res.Write(failureJSON)
-		return
+		view, err := Login()
+		if err != nil {
+			log.Println(err)
+			res.WriteHeader(http.StatusInternalServerError)
+			return
+		}
+
+		res.Header().Set("Content-Type", "text/html")
+		res.Write(view)
 
 	case http.MethodPost:
 		if user.IsValid(req) {
-			res.Write(successJSON)
+			http.Redirect(res, req, req.URL.Scheme+req.URL.Host+"/admin", http.StatusFound)
 			return
 		}
 
 		err := req.ParseForm()
 		if err != nil {
 			log.Println(err)
-			res.WriteHeader(http.StatusInternalServerError)
-			res.Write(failureJSON)
+			http.Redirect(res, req, req.URL.String(), http.StatusFound)
 			return
 		}
 
@@ -580,14 +564,12 @@ func loginHandler(res http.ResponseWriter, req *http.Request) {
 		j, err := db.User(strings.ToLower(req.FormValue("email")))
 		if err != nil {
 			log.Println(err)
-			res.WriteHeader(http.StatusUnauthorized)
-			res.Write(failureJSON)
+			http.Redirect(res, req, req.URL.String(), http.StatusFound)
 			return
 		}
 
 		if j == nil {
-			res.WriteHeader(http.StatusUnauthorized)
-			res.Write(failureJSON)
+			http.Redirect(res, req, req.URL.String(), http.StatusFound)
 			return
 		}
 
@@ -595,14 +577,12 @@ func loginHandler(res http.ResponseWriter, req *http.Request) {
 		err = json.Unmarshal(j, usr)
 		if err != nil {
 			log.Println(err)
-			res.WriteHeader(http.StatusInternalServerError)
-			res.Write(failureJSON)
+			http.Redirect(res, req, req.URL.String(), http.StatusFound)
 			return
 		}
 
 		if !user.IsUser(usr, req.FormValue("password")) {
-			res.WriteHeader(http.StatusUnauthorized)
-			res.Write(failureJSON)
+			http.Redirect(res, req, req.URL.String(), http.StatusFound)
 			return
 		}
 		// create new token
@@ -614,8 +594,7 @@ func loginHandler(res http.ResponseWriter, req *http.Request) {
 		token, err := jwt.New(claims)
 		if err != nil {
 			log.Println(err)
-			res.WriteHeader(http.StatusInternalServerError)
-			res.Write(failureJSON)
+			http.Redirect(res, req, req.URL.String(), http.StatusFound)
 			return
 		}
 
@@ -626,11 +605,8 @@ func loginHandler(res http.ResponseWriter, req *http.Request) {
 			Expires: week,
 			Path:    "/",
 		})
-		res.Write(successJSON)
-		return
-	default:
-		res.WriteHeader(http.StatusMethodNotAllowed)
-		return
+
+		http.Redirect(res, req, strings.TrimSuffix(req.URL.String(), "/login"), http.StatusFound)
 	}
 }
 

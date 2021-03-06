@@ -11,11 +11,115 @@ import (
 	"time"
 
 	"github.com/kudzu-cms/kudzu/system/admin/upload"
+	"github.com/kudzu-cms/kudzu/system/admin/user"
 	"github.com/kudzu-cms/kudzu/system/db"
 	"github.com/kudzu-cms/kudzu/system/item"
+	"github.com/nilslice/jwt"
 
 	"github.com/gorilla/schema"
 )
+
+func loginHandler(res http.ResponseWriter, req *http.Request) {
+	if !db.SystemInitComplete() {
+		res.WriteHeader(http.StatusServiceUnavailable)
+		return
+	}
+
+	success := map[string]interface{}{
+		"success": true,
+	}
+	successJSON, _ := json.Marshal(success)
+
+	failure := map[string]interface{}{
+		"success": false,
+	}
+	failureJSON, _ := json.Marshal(failure)
+
+	switch req.Method {
+
+	case http.MethodGet:
+		res.Header().Set("Content-Type", "application/json")
+		if user.IsValid(req) {
+			res.Write(successJSON)
+			return
+		}
+
+		res.WriteHeader(http.StatusUnauthorized)
+		res.Write(failureJSON)
+		return
+
+	case http.MethodPost:
+		res.Header().Set("Content-Type", "application/json")
+		if user.IsValid(req) {
+			res.Write(successJSON)
+			return
+		}
+
+		err := req.ParseForm()
+		if err != nil {
+			log.Println(err)
+			res.WriteHeader(http.StatusInternalServerError)
+			res.Write(failureJSON)
+			return
+		}
+
+		// check email & password
+		j, err := db.User(strings.ToLower(req.FormValue("email")))
+		if err != nil {
+			log.Println(err)
+			res.WriteHeader(http.StatusUnauthorized)
+			res.Write(failureJSON)
+			return
+		}
+
+		if j == nil {
+			res.WriteHeader(http.StatusUnauthorized)
+			res.Write(failureJSON)
+			return
+		}
+
+		usr := &user.User{}
+		err = json.Unmarshal(j, usr)
+		if err != nil {
+			log.Println(err)
+			res.WriteHeader(http.StatusInternalServerError)
+			res.Write(failureJSON)
+			return
+		}
+
+		if !user.IsUser(usr, req.FormValue("password")) {
+			res.WriteHeader(http.StatusUnauthorized)
+			res.Write(failureJSON)
+			return
+		}
+		// create new token
+		week := time.Now().Add(time.Hour * 24 * 7)
+		claims := map[string]interface{}{
+			"exp":  week,
+			"user": usr.Email,
+		}
+		token, err := jwt.New(claims)
+		if err != nil {
+			log.Println(err)
+			res.WriteHeader(http.StatusInternalServerError)
+			res.Write(failureJSON)
+			return
+		}
+
+		// add it to cookie +1 week expiration
+		http.SetCookie(res, &http.Cookie{
+			Name:    "_token",
+			Value:   token,
+			Expires: week,
+			Path:    "/",
+		})
+		res.Write(successJSON)
+		return
+	default:
+		res.WriteHeader(http.StatusMethodNotAllowed)
+		return
+	}
+}
 
 func contentsMetaHandler(res http.ResponseWriter, req *http.Request) {
 

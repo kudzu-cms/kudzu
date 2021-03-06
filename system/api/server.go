@@ -3,10 +3,15 @@
 // interactivity with the system.
 package api
 
-import "net/http"
+import (
+	"net/http"
+)
 
 // Run adds Handlers to default http listener for API
 func Run() {
+
+	http.HandleFunc("/api/user/login", Record(CORS(AuthCORS(loginHandler))))
+
 	http.HandleFunc("/api/contents", Record(CORS(Gzip(contentsHandler))))
 
 	http.HandleFunc("/api/contents/meta", Record(CORS(AuthCORS(Gzip(contentsMetaHandler)))))

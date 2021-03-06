@@ -236,6 +236,33 @@ var loginAdminHTML = `
 </script>
 `
 
+// Login ...
+func Login() ([]byte, error) {
+	html := startAdminHTML + loginAdminHTML + endAdminHTML
+
+	cfg, err := db.Config("name")
+	if err != nil {
+		return nil, err
+	}
+
+	if cfg == nil {
+		cfg = []byte("")
+	}
+
+	a := admin{
+		Logo: string(cfg),
+	}
+
+	buf := &bytes.Buffer{}
+	tmpl := template.Must(template.New("login").Parse(html))
+	err = tmpl.Execute(buf, a)
+	if err != nil {
+		return nil, err
+	}
+
+	return buf.Bytes(), nil
+}
+
 var forgotPasswordHTML = `
 <div class="init col s5">
 <div class="card">
