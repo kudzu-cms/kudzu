@@ -2,6 +2,7 @@ package api
 
 import (
 	"context"
+	"encoding/base64"
 	"encoding/json"
 	"fmt"
 	"log"
@@ -19,6 +20,105 @@ import (
 	"github.com/gorilla/schema"
 )
 
+// @todo move to handlers.
+func initHandler(res http.ResponseWriter, req *http.Request) {
+
+	if req.Method != http.MethodPost {
+		res.WriteHeader(http.StatusMethodNotAllowed)
+		return
+	}
+
+	if db.SystemInitComplete() {
+		res.WriteHeader(http.StatusServiceUnavailable)
+		return
+	}
+
+	res.Header().Set("Content-Type", "application/json")
+	successJSON, _ := json.Marshal(map[string]interface{}{
+		"success": true,
+	})
+
+	failureJSON, _ := json.Marshal(map[string]interface{}{
+		"success": false,
+	})
+
+	err := req.ParseForm()
+	if err != nil {
+		log.Println(err)
+		res.WriteHeader(http.StatusInternalServerError)
+		res.Write(failureJSON)
+		return
+	}
+
+	// get the site name from post to encode and use as secret
+	name := []byte(req.FormValue("name") + db.NewEtag())
+	secret := base64.StdEncoding.EncodeToString(name)
+	req.Form.Set("client_secret", secret)
+
+	// generate an Etag to use for response caching
+	etag := db.NewEtag()
+	req.Form.Set("etag", etag)
+
+	// create and save admin user
+	email := strings.ToLower(req.FormValue("email"))
+	password := req.FormValue("password")
+	usr, err := user.New(email, password)
+	if err != nil {
+		log.Println(err)
+		res.WriteHeader(http.StatusInternalServerError)
+		res.Write(failureJSON)
+		return
+	}
+
+	_, err = db.SetUser(usr)
+	if err != nil {
+		log.Println(err)
+		res.WriteHeader(http.StatusInternalServerError)
+		res.Write(failureJSON)
+		return
+	}
+
+	// set HTTP port which should be previously added to config cache
+	port := db.ConfigCache("http_port").(string)
+	req.Form.Set("http_port", port)
+
+	// set initial user email as admin_email and make config
+	req.Form.Set("admin_email", email)
+	err = db.SetConfig(req.Form)
+	if err != nil {
+		log.Println(err)
+		res.WriteHeader(http.StatusInternalServerError)
+		res.Write(failureJSON)
+		return
+	}
+
+	// add _token cookie for login persistence
+	week := time.Now().Add(time.Hour * 24 * 7)
+	claims := map[string]interface{}{
+		"exp":  week.Unix(),
+		"user": usr.Email,
+	}
+
+	jwt.Secret([]byte(secret))
+	token, err := jwt.New(claims)
+	if err != nil {
+		log.Println(err)
+		res.WriteHeader(http.StatusInternalServerError)
+		res.Write(failureJSON)
+		return
+	}
+
+	http.SetCookie(res, &http.Cookie{
+		Name:    "_token",
+		Value:   token,
+		Expires: week,
+		Path:    "/",
+	})
+
+	res.Write(successJSON)
+}
+
+// @todo move to handlers.
 func loginHandler(res http.ResponseWriter, req *http.Request) {
 	if !db.SystemInitComplete() {
 		res.WriteHeader(http.StatusServiceUnavailable)
