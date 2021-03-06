@@ -144,46 +144,44 @@ func contentsMetaHandler(res http.ResponseWriter, req *http.Request) {
 	// For instance, `int64` could be returned simply as `int` and `uuid.UUID`
 	// could be returned as `string` because external systems are welcome to think
 	// of this type as being represented by a string.
-	if req.URL.RawQuery == "" {
-		types := map[string]interface{}{}
-		for name, t := range item.Types {
-			tInst := t()
-			ref := reflect.ValueOf(tInst).Elem()
-			typeSchema := map[string]interface{}{}
-			for i := 0; i < ref.NumField(); i++ {
-				field := ref.Type().Field(i)
-				fieldName := field.Name
-				fieldType := field.Type.String()
-				if fieldType != "item.Item" {
+	types := map[string]interface{}{}
+	for name, t := range item.Types {
+		tInst := t()
+		ref := reflect.ValueOf(tInst).Elem()
+		typeSchema := map[string]interface{}{}
+		for i := 0; i < ref.NumField(); i++ {
+			field := ref.Type().Field(i)
+			fieldName := field.Name
+			fieldType := field.Type.String()
+			if fieldType != "item.Item" {
+				typeSchema[fieldName] = fieldType
+			} else {
+				itemInst := item.Item{}
+				itemRef := reflect.ValueOf(&itemInst).Elem()
+				// To return in nested representation:
+				// itemSchema := map[string]interface{}{}
+				for j := 0; j < itemRef.NumField(); j++ {
+					field := itemRef.Type().Field(j)
+					fieldName := field.Name
+					fieldType := field.Type.String()
+					// To return in nested representation:
+					// itemSchema[fieldName] = fieldType
 					typeSchema[fieldName] = fieldType
-				} else {
-					itemInst := item.Item{}
-					itemRef := reflect.ValueOf(&itemInst).Elem()
-					// To return in nested representation:
-					// itemSchema := map[string]interface{}{}
-					for j := 0; j < itemRef.NumField(); j++ {
-						field := itemRef.Type().Field(j)
-						fieldName := field.Name
-						fieldType := field.Type.String()
-						// To return in nested representation:
-						// itemSchema[fieldName] = fieldType
-						typeSchema[fieldName] = fieldType
-					}
-					// To return in nested representation:
-					// typeSchema[fieldName] = itemSchema
 				}
+				// To return in nested representation:
+				// typeSchema[fieldName] = itemSchema
 			}
-			types[name] = typeSchema
 		}
-		jsonResponse, err := json.Marshal(types)
-		if err != nil {
-			res.WriteHeader(http.StatusInternalServerError)
-			return
-		}
-		res.Header().Set("Content-Type", "application/json")
-		res.Write(jsonResponse)
+		types[name] = typeSchema
+	}
+	jsonResponse, err := json.Marshal(types)
+	if err != nil {
+		res.WriteHeader(http.StatusInternalServerError)
 		return
 	}
+	res.Header().Set("Content-Type", "application/json")
+	res.Write(jsonResponse)
+	return
 }
 
 func createContentHandler(res http.ResponseWriter, req *http.Request) {
