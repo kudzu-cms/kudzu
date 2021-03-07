@@ -73,9 +73,16 @@ func contentsMetaHandler(res http.ResponseWriter, req *http.Request) {
 				// typeSchema[fieldName] = itemSchema
 			}
 		}
-		types[name] = typeSchema
+		orderedTypeSchema := []interface{}{}
+		for fieldName, fieldType := range typeSchema {
+			orderedTypeSchema = append(orderedTypeSchema, map[string]interface{}{
+				"name": fieldName,
+				"type": fieldType,
+			})
+		}
+		types[name] = orderedTypeSchema
 	}
-	jsonResponse, err := json.Marshal(interface{}(types))
+	jsonResponse, err := json.Marshal(types)
 	if err != nil {
 		res.WriteHeader(http.StatusInternalServerError)
 		return
