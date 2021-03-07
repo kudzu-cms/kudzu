@@ -13,7 +13,9 @@ import (
 // sendPreflight is used to respond to a cross-origin "OPTIONS" request
 func sendPreflight(res http.ResponseWriter) {
 	res.Header().Set("Access-Control-Allow-Headers", "Accept, Authorization, Content-Type")
-	res.Header().Set("Access-Control-Allow-Origin", "*")
+	if res.Header().Get("Access-Control-Allow-Origin") == "" {
+		res.Header().Set("Access-Control-Allow-Origin", "*")
+	}
 	res.WriteHeader(200)
 	return
 }
@@ -42,7 +44,10 @@ func responseWithCORS(res http.ResponseWriter, req *http.Request) (http.Response
 		if origin == domain {
 			// apply limited CORS headers and return
 			res.Header().Set("Access-Control-Allow-Headers", "Accept, Authorization, Content-Type")
-			res.Header().Set("Access-Control-Allow-Origin", domain)
+			// @todo Consider removing this configuration value altogether.
+			if res.Header().Get("Access-Control-Allow-Origin") == "" {
+				res.Header().Set("Access-Control-Allow-Origin", domain)
+			}
 			return res, true
 		}
 
@@ -53,7 +58,9 @@ func responseWithCORS(res http.ResponseWriter, req *http.Request) (http.Response
 
 	// apply full CORS headers and return
 	res.Header().Set("Access-Control-Allow-Headers", "Accept, Authorization, Content-Type")
-	res.Header().Set("Access-Control-Allow-Origin", "*")
+	if res.Header().Get("Access-Control-Allow-Origin") == "" {
+		res.Header().Set("Access-Control-Allow-Origin", "*")
+	}
 
 	return res, true
 }

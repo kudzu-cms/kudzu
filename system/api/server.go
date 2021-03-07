@@ -10,23 +10,25 @@ import (
 // Run adds Handlers to default http listener for API
 func Run() {
 
-	http.HandleFunc("/api/user/login", Record(CORS(AuthCORS(loginHandler))))
+	http.HandleFunc("/api/user/login", Record(AuthCORS(CORS(loginHandler))))
+
+	http.HandleFunc("/api/user/logout", Record(AuthCORS(CORS(AuthRequest(logoutHandler)))))
 
 	http.HandleFunc("/api/contents", Record(CORS(Gzip(contentsHandler))))
 
-	http.HandleFunc("/api/contents/meta", Record(CORS(AuthCORS(AuthRequest(Gzip(contentsMetaHandler))))))
+	http.HandleFunc("/api/contents/meta", Record(AuthCORS(CORS(AuthRequest(Gzip(contentsMetaHandler))))))
 
 	http.HandleFunc("/api/content", Record(CORS(Gzip(contentHandler))))
 
-	http.HandleFunc("/api/content/create", Record(CORS(AuthCORS(AuthRequest(createContentHandler)))))
+	http.HandleFunc("/api/content/create", Record(AuthCORS(CORS(AuthRequest(createContentHandler)))))
 
-	http.HandleFunc("/api/content/update", Record(CORS(AuthCORS(AuthRequest(updateContentHandler)))))
+	http.HandleFunc("/api/content/update", Record(AuthCORS(CORS(AuthRequest(updateContentHandler)))))
 
-	http.HandleFunc("/api/content/delete", Record(CORS(AuthCORS(AuthRequest(deleteContentHandler)))))
+	http.HandleFunc("/api/content/delete", Record(AuthCORS(CORS(AuthRequest(deleteContentHandler)))))
 
 	http.HandleFunc("/api/search", Record(CORS(Gzip(searchContentHandler))))
 
 	http.HandleFunc("/api/uploads", Record(CORS(Gzip(uploadsHandler))))
 
-	http.HandleFunc("/api/system/init", Record(CORS(AuthCORS(initHandler))))
+	http.HandleFunc("/api/system/init", Record(AuthCORS(CORS(initHandler))))
 }
