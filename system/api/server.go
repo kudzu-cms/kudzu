@@ -14,19 +14,19 @@ func Run() {
 
 	http.HandleFunc("/api/contents", Record(CORS(Gzip(contentsHandler))))
 
-	http.HandleFunc("/api/contents/meta", Record(CORS(AuthCORS(Gzip(contentsMetaHandler)))))
+	http.HandleFunc("/api/contents/meta", Record(CORS(AuthCORS(AuthRequest(Gzip(contentsMetaHandler))))))
 
 	http.HandleFunc("/api/content", Record(CORS(Gzip(contentHandler))))
 
-	http.HandleFunc("/api/content/create", Record(CORS(AuthCORS(createContentHandler))))
+	http.HandleFunc("/api/content/create", Record(CORS(AuthCORS(AuthRequest(createContentHandler)))))
 
-	http.HandleFunc("/api/content/update", Record(CORS(AuthCORS(updateContentHandler))))
+	http.HandleFunc("/api/content/update", Record(CORS(AuthCORS(AuthRequest(updateContentHandler)))))
 
-	http.HandleFunc("/api/content/delete", Record(CORS(AuthCORS(deleteContentHandler))))
+	http.HandleFunc("/api/content/delete", Record(CORS(AuthCORS(AuthRequest(deleteContentHandler)))))
 
 	http.HandleFunc("/api/search", Record(CORS(Gzip(searchContentHandler))))
 
 	http.HandleFunc("/api/uploads", Record(CORS(Gzip(uploadsHandler))))
 
-	http.HandleFunc("/api/system/init", Record(CORS(initHandler)))
+	http.HandleFunc("/api/system/init", Record(CORS(AuthCORS(initHandler))))
 }

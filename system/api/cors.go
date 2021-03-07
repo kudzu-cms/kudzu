@@ -58,15 +58,22 @@ func responseWithCORS(res http.ResponseWriter, req *http.Request) (http.Response
 	return res, true
 }
 
+// AuthRequest ...
+func AuthRequest(next http.HandlerFunc) http.HandlerFunc {
+	return http.HandlerFunc(func(res http.ResponseWriter, req *http.Request) {
+		if !user.IsValid(req) {
+			res.WriteHeader(http.StatusForbidden)
+			return
+		}
+		next.ServeHTTP(res, req)
+	})
+}
+
 // AuthCORS ...
 func AuthCORS(next http.HandlerFunc) http.HandlerFunc {
 	return http.HandlerFunc(func(res http.ResponseWriter, req *http.Request) {
 		res.Header().Set("Access-Control-Allow-Origin", os.Getenv("KUDZU_CORS_ORIGIN"))
 		res.Header().Set("Access-Control-Allow-Credentials", "true")
-		if !user.IsValid(req) {
-			res.WriteHeader(http.StatusForbidden)
-			return
-		}
 		next.ServeHTTP(res, req)
 	})
 }
