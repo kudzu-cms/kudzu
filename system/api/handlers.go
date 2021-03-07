@@ -236,6 +236,23 @@ func loginHandler(res http.ResponseWriter, req *http.Request) {
 	}
 }
 
+func logoutHandler(res http.ResponseWriter, req *http.Request) {
+
+	if req.Method != http.MethodPost {
+		res.WriteHeader(http.StatusMethodNotAllowed)
+		return
+	}
+
+	http.SetCookie(res, &http.Cookie{
+		Name:    "_token",
+		Expires: time.Unix(0, 0),
+		Value:   "",
+		Path:    "/",
+	})
+
+	res.WriteHeader(http.StatusOK)
+}
+
 func contentsHandler(res http.ResponseWriter, req *http.Request) {
 	q := req.URL.Query()
 	t := q.Get("type")
