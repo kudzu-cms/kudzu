@@ -43,11 +43,16 @@ func contentsMetaHandler(res http.ResponseWriter, req *http.Request) {
 	types := map[string]interface{}{}
 	for name, t := range item.Types {
 		tInst := t()
-		ref := reflect.ValueOf(tInst).Elem()
+		tJson, _ := json.Marshal(tInst)
 		typeSchema := map[string]interface{}{}
+		err := json.Unmarshal(tJson, &typeSchema)
+		if err != nil {
+			panic(err)
+		}
+		ref := reflect.ValueOf(tInst).Elem()
 		for i := 0; i < ref.NumField(); i++ {
 			field := ref.Type().Field(i)
-			fieldName := field.Name
+			fieldName := strings.TrimSuffix(strings.TrimPrefix(string(field.Tag), "json:\""), "\"")
 			fieldType := field.Type.String()
 			if fieldType != "item.Item" {
 				typeSchema[fieldName] = fieldType
@@ -58,7 +63,7 @@ func contentsMetaHandler(res http.ResponseWriter, req *http.Request) {
 				// itemSchema := map[string]interface{}{}
 				for j := 0; j < itemRef.NumField(); j++ {
 					field := itemRef.Type().Field(j)
-					fieldName := field.Name
+					fieldName := strings.TrimSuffix(strings.TrimPrefix(string(field.Tag), "json:\""), "\"")
 					fieldType := field.Type.String()
 					// To return in nested representation:
 					// itemSchema[fieldName] = fieldType
@@ -70,7 +75,7 @@ func contentsMetaHandler(res http.ResponseWriter, req *http.Request) {
 		}
 		types[name] = typeSchema
 	}
-	jsonResponse, err := json.Marshal(types)
+	jsonResponse, err := json.Marshal(interface{}(types))
 	if err != nil {
 		res.WriteHeader(http.StatusInternalServerError)
 		return
