@@ -43,44 +43,32 @@ func contentsMetaHandler(res http.ResponseWriter, req *http.Request) {
 	types := map[string]interface{}{}
 	for name, t := range item.Types {
 		tInst := t()
-		tJson, _ := json.Marshal(tInst)
-		typeSchema := map[string]interface{}{}
-		err := json.Unmarshal(tJson, &typeSchema)
-		if err != nil {
-			panic(err)
-		}
+		typeSchema := []interface{}{}
 		ref := reflect.ValueOf(tInst).Elem()
 		for i := 0; i < ref.NumField(); i++ {
 			field := ref.Type().Field(i)
 			fieldName := strings.TrimSuffix(strings.TrimPrefix(string(field.Tag), "json:\""), "\"")
 			fieldType := field.Type.String()
 			if fieldType != "item.Item" {
-				typeSchema[fieldName] = fieldType
+				typeSchema = append(typeSchema, map[string]interface{}{
+					"name": fieldName,
+					"type": fieldType,
+				})
 			} else {
 				itemInst := item.Item{}
 				itemRef := reflect.ValueOf(&itemInst).Elem()
-				// To return in nested representation:
-				// itemSchema := map[string]interface{}{}
 				for j := 0; j < itemRef.NumField(); j++ {
 					field := itemRef.Type().Field(j)
 					fieldName := strings.TrimSuffix(strings.TrimPrefix(string(field.Tag), "json:\""), "\"")
 					fieldType := field.Type.String()
-					// To return in nested representation:
-					// itemSchema[fieldName] = fieldType
-					typeSchema[fieldName] = fieldType
+					typeSchema = append(typeSchema, map[string]interface{}{
+						"name": fieldName,
+						"type": fieldType,
+					})
 				}
-				// To return in nested representation:
-				// typeSchema[fieldName] = itemSchema
 			}
 		}
-		orderedTypeSchema := []interface{}{}
-		for fieldName, fieldType := range typeSchema {
-			orderedTypeSchema = append(orderedTypeSchema, map[string]interface{}{
-				"name": fieldName,
-				"type": fieldType,
-			})
-		}
-		types[name] = orderedTypeSchema
+		types[name] = typeSchema
 	}
 	jsonResponse, err := json.Marshal(types)
 	if err != nil {
