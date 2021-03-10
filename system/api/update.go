@@ -66,7 +66,6 @@ func updateContentHandler(res http.ResponseWriter, req *http.Request) {
 	}
 
 	ts := fmt.Sprintf("%d", int64(time.Nanosecond)*time.Now().UnixNano()/int64(time.Millisecond))
-	req.PostForm.Set("timestamp", ts)
 	req.PostForm.Set("updated", ts)
 
 	urlPaths, err := upload.StoreFiles(req)
