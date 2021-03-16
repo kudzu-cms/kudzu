@@ -338,5 +338,9 @@ func stringToSlug(s string) (string, error) {
 // NormalizeString removes and replaces illegal characters for URLs and other
 // path entities. Useful for taking user input and converting it for keys or URLs.
 func NormalizeString(s string) (string, error) {
-	return stringToSlug(s)
+	extRegex := regexp.MustCompile("(\\.\\w+)$")
+	ext := extRegex.FindStringSubmatch(s)[0]
+	name := strings.TrimSuffix(s, ext)
+	nameSlug, err := stringToSlug(name)
+	return nameSlug + strings.ToLower(ext), err
 }
