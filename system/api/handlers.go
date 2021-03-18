@@ -12,6 +12,7 @@ import (
 
 	"github.com/kudzu-cms/kudzu/system/admin/user"
 	"github.com/kudzu-cms/kudzu/system/db"
+	"github.com/kudzu-cms/kudzu/system/filesystem"
 	"github.com/kudzu-cms/kudzu/system/item"
 	"github.com/nilslice/jwt"
 )
@@ -541,4 +542,89 @@ func uploadsHandler(res http.ResponseWriter, req *http.Request) {
 	}
 
 	sendData(res, req, j)
+}
+
+func uploadsDeleteHandler(res http.ResponseWriter, req *http.Request) {
+
+	if req.Method != http.MethodPost {
+		res.WriteHeader(http.StatusMethodNotAllowed)
+		return
+	}
+
+	err := req.ParseMultipartForm(1024 * 1024 * 4) // maxMemory 4MB
+	if err != nil {
+		log.Println(err)
+		res.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+
+	id := req.FormValue("id")
+	t := "__uploads"
+
+	if id == "" || t == "" {
+		res.WriteHeader(http.StatusBadRequest)
+		return
+	}
+
+	success := map[string]interface{}{
+		"success": true,
+	}
+	successJSON, _ := json.Marshal(success)
+
+	failure := map[string]interface{}{
+		"success": false,
+	}
+	failureJSON, _ := json.Marshal(failure)
+
+	post := interface{}(&item.FileUpload{})
+	hook, ok := post.(item.Hookable)
+	if !ok {
+		log.Println("Type", t, "does not implement item.Hookable or embed item.Item.")
+		res.WriteHeader(http.StatusBadRequest)
+		res.Header().Set("Content-Type", "application/json")
+		res.Write(failureJSON)
+		return
+	}
+
+	err = hook.BeforeDelete(res, req)
+	if err != nil {
+		log.Println("Error running BeforeDelete method in deleteHandler for:", t, err)
+		res.Header().Set("Content-Type", "application/json")
+		res.Write(failureJSON)
+		return
+	}
+
+	dbTarget := t + ":" + id
+
+	// delete from file system, if good, we continue to delete
+	// from database, if bad error 500
+
+	err = filesystem.DeleteUploadFromDisk(dbTarget)
+	if err != nil {
+		log.Println(err)
+		res.WriteHeader(http.StatusInternalServerError)
+		res.Header().Set("Content-Type", "application/json")
+		res.Write(failureJSON)
+		return
+	}
+
+	err = db.DeleteUpload(dbTarget)
+	if err != nil {
+		log.Println(err)
+		res.WriteHeader(http.StatusInternalServerError)
+		res.Header().Set("Content-Type", "application/json")
+		res.Write(failureJSON)
+		return
+	}
+
+	err = hook.AfterDelete(res, req)
+	if err != nil {
+		log.Println("Error running AfterDelete method in deleteHandler for:", t, err)
+		res.Header().Set("Content-Type", "application/json")
+		res.Write(failureJSON)
+		return
+	}
+
+	res.Header().Set("Content-Type", "application/json")
+	res.Write(successJSON)
 }

@@ -30,5 +30,7 @@ func Run() {
 
 	http.HandleFunc("/api/uploads", Record(CORS(Gzip(uploadsHandler))))
 
+	http.HandleFunc("/api/uploads/delete", Record(AuthCORS(CORS(Gzip(uploadsDeleteHandler)))))
+
 	http.HandleFunc("/api/system/init", Record(AuthCORS(CORS(initHandler))))
 }
